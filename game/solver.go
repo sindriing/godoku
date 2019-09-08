@@ -14,13 +14,14 @@ type cell struct {
 	value   int
 }
 
-type sudoku struct {
+// Sudoku struct to represent the game board
+type Sudoku struct {
 	board  [9][9]cell
 	filled int //How many total squares filled
 }
 
-//Attempts to solve the board, cannot make guesses
-func (s sudoku) Solve() sudoku {
+//Solve attempts to solve the board, cannot make guesses
+func (s Sudoku) Solve() Sudoku {
 	for s.filled < 81 {
 		change := false
 		for i := 0; i < 9; i++ {
@@ -52,6 +53,7 @@ func (s sudoku) Solve() sudoku {
 			}
 		}
 		if !change {
+			//Todo implementing guessing
 			fmt.Println("Current rule set provides no possible moves")
 			break
 		}
@@ -60,7 +62,7 @@ func (s sudoku) Solve() sudoku {
 }
 
 //Check if this cell has only one possible value left
-func (s *sudoku) checkOneVal(x int, y int) int {
+func (s *Sudoku) checkOneVal(x int, y int) int {
 	var last, sum int
 	for i, blocked := range s.board[x][y].blocked {
 		if !blocked {
@@ -75,7 +77,7 @@ func (s *sudoku) checkOneVal(x int, y int) int {
 }
 
 //Check if I'm the only one in my row who can receive a specific value
-func (s *sudoku) checkRow(x int, y int) int {
+func (s *Sudoku) checkRow(x int, y int) int {
 	var success bool
 	for v, block := range s.board[x][y].blocked {
 		if !block {
@@ -96,7 +98,7 @@ func (s *sudoku) checkRow(x int, y int) int {
 }
 
 //Check if I'm the only one in my column who can receive a specific value
-func (s *sudoku) checkCol(x int, y int) int {
+func (s *Sudoku) checkCol(x int, y int) int {
 	var success bool
 	for v, block := range s.board[x][y].blocked {
 		if !block {
@@ -117,7 +119,7 @@ func (s *sudoku) checkCol(x int, y int) int {
 }
 
 //Initial solve run adds no new numbers but explodes all preset values
-func (s *sudoku) FirstSweep() {
+func (s *Sudoku) FirstSweep() {
 	for i := 0; i < 9; i++ {
 		for j := 0; j < 9; j++ {
 			if curr := s.board[i][j].value; curr != 0 {
@@ -128,7 +130,7 @@ func (s *sudoku) FirstSweep() {
 }
 
 //Check if I'm the only one in my 3x3 chunk who can receive a specific value
-func (s *sudoku) checkChunk(x int, y int) int {
+func (s *Sudoku) checkChunk(x int, y int) int {
 	xn := x - (x % 3)
 	yn := y - (y % 3)
 	var success bool
@@ -154,19 +156,19 @@ func (s *sudoku) checkChunk(x int, y int) int {
 
 // "Explode" means to spread the influence of a value to restrict other cells
 // from taking that value
-func (s *sudoku) explode(x int, y int, val int) {
+func (s *Sudoku) explode(x int, y int, val int) {
 	s.board[x][y].blocked = allBlock
 	s.filled++
 
 	s.board[x][y].value = val
-	val-- //indexing is 0-8 while sudoku is 1-9
+	val-- //indexing is 0-8 while Sudoku is 1-9
 	s.explodeChunk(x, y, val)
 	s.explodeVertical(x, val)
 	s.explodeHorizontal(y, val)
 }
 
 //Remve possibilities in the small 3x3 chunks
-func (s *sudoku) explodeChunk(x int, y int, val int) {
+func (s *Sudoku) explodeChunk(x int, y int, val int) {
 	x = x - (x % 3)
 	y = y - (y % 3)
 
@@ -179,7 +181,7 @@ func (s *sudoku) explodeChunk(x int, y int, val int) {
 	}
 }
 
-func (s *sudoku) explodeVertical(x int, val int) {
+func (s *Sudoku) explodeVertical(x int, val int) {
 	for i := 0; i < 9; i++ {
 		if s.board[x][i].blocked[val] == false {
 			s.board[x][i].blocked[val] = true
@@ -187,7 +189,7 @@ func (s *sudoku) explodeVertical(x int, val int) {
 	}
 }
 
-func (s *sudoku) explodeHorizontal(y int, val int) {
+func (s *Sudoku) explodeHorizontal(y int, val int) {
 	for i := 0; i < 9; i++ {
 		if s.board[i][y].blocked[val] == false {
 			s.board[i][y].blocked[val] = true
@@ -195,11 +197,11 @@ func (s *sudoku) explodeHorizontal(y int, val int) {
 	}
 }
 
-func (s *sudoku) isFree(x int, y int) bool {
+func (s *Sudoku) isFree(x int, y int) bool {
 	return s.board[x][y].value == 0
 }
 
-func (s sudoku) PrintBoard() {
+func (s Sudoku) PrintBoard() {
 	for i := 0; i < 9; i++ {
 		if i%3 == 0 {
 			fmt.Println("-------------------------")
@@ -216,7 +218,7 @@ func (s sudoku) PrintBoard() {
 }
 
 // Used for debugging
-func (s sudoku) printBlock() {
+func (s Sudoku) printBlock() {
 	for i := 0; i < 9; i++ {
 		if i%3 == 0 {
 			fmt.Println("")
@@ -242,9 +244,9 @@ func (s sudoku) printBlock() {
 }
 
 //InitializeBoard creates the initial game board
-func InitializeBoard(path string) sudoku {
-	Sudoku := sudoku{readBoard(path), 0}
-	return Sudoku
+func InitializeBoard(path string) Sudoku {
+	sudoku := Sudoku{readBoard(path), 0}
+	return sudoku
 }
 
 func readBoard(path string) [9][9]cell {
