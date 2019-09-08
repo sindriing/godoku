@@ -23,48 +23,51 @@ func main() {
 	fmt.Println("Hello World")
 	game := initializeBoard("presets/board1.txt")
 	game.printBoard()
-	game.printBlock()
 
 	game.firstSweep()
-	game.printBoard()
-	game.printBlock()
 
 	progress := game.solve()
 	progress.printBoard()
-	progress.printBlock()
 
 }
 
 //Attempts to solve the board, cannot make guesses
 func (s sudoku) solve() sudoku {
 
-	for {
+	for s.filled < 81 {
+		change := false
 		for i := 0; i < 9; i++ {
 			for j := 0; j < 9; j++ {
 				if s.isFree(i, j) {
 					// Check if there is only one available value
 					if val := s.checkOneVal(i, j); val != 0 {
 						s.explode(i, j, val)
+						change = true
 					}
 					// Check row
 					if val := s.checkRow(i, j); val != 0 {
 						s.explode(i, j, val)
+						change = true
 					}
 
 					// Check column
 					if val := s.checkCol(i, j); val != 0 {
 						s.explode(i, j, val)
+						change = true
 					}
 
 					//Check inner block
 					if val := s.checkChunk(i, j); val != 0 {
 						s.explode(i, j, val)
+						change = true
 					}
-
 				}
 			}
 		}
-
+		if !change {
+			fmt.Println("Current rule set provides no possible moves")
+			break
+		}
 	}
 	return s
 }
