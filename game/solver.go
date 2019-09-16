@@ -61,6 +61,9 @@ func (s Sudoku) Solve() Sudoku {
 	return s
 }
 
+// returns one random valid guess
+// func (s Sudoku) guess()
+
 //Check if this cell has only one possible value left
 func (s *Sudoku) checkOneVal(x int, y int) int {
 	var last, sum int
