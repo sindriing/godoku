@@ -1,0 +1,22 @@
+// package main
+
+// // package main
+
+// import (
+// 	"fmt"
+
+// 	"github.com/sindriing/godoku/solver"
+// )
+
+// func main() {
+// 	solver := solver.InitializeBoard("presets/board1.txt")
+// 	fmt.Println("Initial Sudoku board")
+// 	solver.PrintBoard()
+// 	fmt.Println()
+// 	solver.FirstSweep()
+
+// 	progress := solver.Solve()
+// 	fmt.Println("Solved Sudoku board")
+// 	progress.PrintBoard()
+
+// }
