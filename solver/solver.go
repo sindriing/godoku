@@ -12,24 +12,22 @@ var allBlock = [9]bool{true, true, true, true, true, true, true, true, true}
 // Cell represents a single cell/square on the sudoku board
 type Cell struct {
 	blocked [9]bool //Which numbers can't be placed
-	Value   int     //Value represents the digit Value of a square
+	Value   int8    //Value represents the digit Value of a square
+	Unsure  bool    //Did we guess this value or are we cetrain of its correctness
 }
 
 // Sudoku struct to represent the game board
 type Sudoku struct {
 	board  [9][9]Cell
-	filled int             //How many total squares filled
-	Feeder chan [9][9]Cell //Feeder supplies board states
+	filled int //How many total squares filled
 }
 
 // Begin will read in a board and get things ready and start solving.
 // if the gui argument is true then a channel will be initialized which
 // feeds the gui with board states to display
-func (s *Sudoku) Begin(path string, gui bool) {
+func (s *Sudoku) Begin(path string, feeder chan<- [9][9]Cell) {
 	s.board = readBoard(path)
-	s.filled = 0
-	s.FirstSweep()
-	s.Feeder = make(chan [9][9]Cell)
+	s.FirstSweep(feeder)
 }
 
 // if the cell doesn't have a value and all values are blocked then something is wrong
@@ -45,33 +43,43 @@ func sanity(c Cell) bool {
 	return true
 }
 
+func (s *Sudoku) checkCell(i int, j int) (change bool) {
+	// Check if there is only one available Value
+	if val := s.checkOneVal(i, j); val != 0 {
+		s.explode(i, j, val, false)
+		change = true
+	}
+	// Check row
+	if val := s.checkRow(i, j); val != 0 {
+		s.explode(i, j, val, false)
+		change = true
+	}
+	// Check column
+	if val := s.checkCol(i, j); val != 0 {
+		s.explode(i, j, val, false)
+		change = true
+	}
+	// Check 3x3 chunk
+	if val := s.checkChunk(i, j); val != 0 {
+		s.explode(i, j, val, false)
+		change = true
+	}
+	return
+}
+
 //Solve attempts to solve the board, cannot make guesses
-func (s Sudoku) Solve() bool {
+func (s Sudoku) Solve(feeder chan<- [9][9]Cell) bool {
 	for s.filled < 81 {
 		change := false
 		for i := 0; i < 9; i++ {
 			for j := 0; j < 9; j++ {
-				if s.isFree(i, j) {
-					// Check if there is only one available Value
-					if val := s.checkOneVal(i, j); val != 0 {
-						s.explode(i, j, val)
-						change = true
-					}
-					// Check row
-					if val := s.checkRow(i, j); val != 0 {
-						s.explode(i, j, val)
-						change = true
-					}
-
-					// Check column
-					if val := s.checkCol(i, j); val != 0 {
-						s.explode(i, j, val)
-						change = true
-					}
-
-					// Check 3x3 chunk
-					if val := s.checkChunk(i, j); val != 0 {
-						s.explode(i, j, val)
+				// fmt.Println(i, j, s.board[0][1].blocked[1])
+				if !sanity(s.board[i][j]) {
+					fmt.Println("Shit hit the fan!")
+					return false
+				} else if s.isFree(i, j) {
+					if feeder != nil && s.checkCell(i, j) {
+						feeder <- s.board
 						change = true
 					}
 				}
@@ -79,18 +87,65 @@ func (s Sudoku) Solve() bool {
 		}
 		if !change {
 			//Todo implementing guessing
-			fmt.Println("Current rule set provides no possible moves")
-			return false
+			fmt.Println("Making a guess")
+			s.guess(feeder)
+
+			// if s.Solve()
 		}
 	}
 	return true
 }
 
-// returns one random valid guess
-// func (s Sudoku) guess()
+func (s *Sudoku) guess(feeder chan<- [9][9]Cell) {
+	backup := makeBackup(*s)
+
+	//Attempt to make high probability guesses by prioritizing cells with few options
+	for standards := 2; standards < 9; standards++ {
+		for i := 0; i < 9; i++ {
+			for j := 0; j < 9; j++ {
+				if s.isFree(i, j) && countOptions(s.board[i][j]) == standards {
+					for nr, block := range s.board[i][j].blocked {
+						if block == false {
+							//make a guess and attempt to solve the board
+							//if we can't we can at least rule out the guessed number
+							backup.explode(i, j, int8(nr+1), true)
+							if backup.Solve(feeder) {
+								s.explode(i, j, int8(nr+1), false)
+							} else {
+								s.board[i][j].blocked[nr] = true
+								s.checkCell(i, j)
+							}
+							return
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+func countOptions(c Cell) (options int) {
+	for _, block := range c.blocked {
+		if !block {
+			options++
+		}
+	}
+	return
+}
+
+func makeBackup(s Sudoku) Sudoku {
+	bac := new(Sudoku)
+	bac.filled = s.filled
+	for i := 0; i < 9; i++ {
+		for j := 0; j < 9; j++ {
+			bac.board[i][j] = s.board[i][j]
+		}
+	}
+	return *bac
+}
 
 //Check if this Cell has only one possible Value left
-func (s *Sudoku) checkOneVal(x int, y int) int {
+func (s *Sudoku) checkOneVal(x int, y int) int8 {
 	var last, sum int
 	for i, blocked := range s.board[x][y].blocked {
 		if !blocked {
@@ -101,11 +156,11 @@ func (s *Sudoku) checkOneVal(x int, y int) int {
 			return 0
 		}
 	}
-	return last + 1
+	return int8(last + 1)
 }
 
 //Check if I'm the only one in my row who can receive a specific Value
-func (s *Sudoku) checkRow(x int, y int) int {
+func (s *Sudoku) checkRow(x int, y int) int8 {
 	var success bool
 	for v, block := range s.board[x][y].blocked {
 		if !block {
@@ -118,7 +173,7 @@ func (s *Sudoku) checkRow(x int, y int) int {
 				}
 			}
 			if success {
-				return v + 1
+				return int8(v + 1)
 			}
 		}
 	}
@@ -126,7 +181,7 @@ func (s *Sudoku) checkRow(x int, y int) int {
 }
 
 //Check if I'm the only one in my column who can receive a specific Value
-func (s *Sudoku) checkCol(x int, y int) int {
+func (s *Sudoku) checkCol(x int, y int) int8 {
 	var success bool
 	for v, block := range s.board[x][y].blocked {
 		if !block {
@@ -139,7 +194,7 @@ func (s *Sudoku) checkCol(x int, y int) int {
 				}
 			}
 			if success {
-				return v + 1
+				return int8(v + 1)
 			}
 		}
 	}
@@ -148,18 +203,21 @@ func (s *Sudoku) checkCol(x int, y int) int {
 
 // FirstSweep is run before solving. It sets some required internal variables
 // based on the initial Values in the board
-func (s *Sudoku) FirstSweep() {
+func (s *Sudoku) FirstSweep(feeder chan<- [9][9]Cell) {
 	for i := 0; i < 9; i++ {
 		for j := 0; j < 9; j++ {
 			if curr := s.board[i][j].Value; curr != 0 {
-				s.explode(i, j, curr)
+				s.explode(i, j, curr, false)
 			}
 		}
+	}
+	if feeder != nil {
+		feeder <- s.board
 	}
 }
 
 //Check if I'm the only one in my 3x3 chunk who can receive a specific Value
-func (s *Sudoku) checkChunk(x int, y int) int {
+func (s *Sudoku) checkChunk(x int, y int) int8 {
 	xn := x - (x % 3)
 	yn := y - (y % 3)
 	var success bool
@@ -176,7 +234,7 @@ func (s *Sudoku) checkChunk(x int, y int) int {
 				}
 			}
 			if success {
-				return v + 1
+				return int8(v + 1)
 			}
 		}
 	}
@@ -185,24 +243,25 @@ func (s *Sudoku) checkChunk(x int, y int) int {
 
 // "Explode" means to spread the influence of a Value to restrict other Cells
 // from taking that Value
-func (s *Sudoku) explode(x int, y int, val int) {
+func (s *Sudoku) explode(x int, y int, val int8, unsure bool) {
 	s.board[x][y].blocked = allBlock
+	s.board[x][y].Unsure = unsure
 	s.filled++
-
 	s.board[x][y].Value = val
+
 	val-- //indexing is 0-8 while Sudoku is 1-9
 	s.explodeChunk(x, y, val)
 	s.explodeVertical(x, val)
 	s.explodeHorizontal(y, val)
 
 	// Send a board state to the GUI to draw
-	if s.Feeder != nil {
-		s.Feeder <- s.board
-	}
+	// if s.Feeder != nil {
+	// 	s.Feeder <- s.board
+	// }
 }
 
 //Remve possibilities in the small 3x3 chunks
-func (s *Sudoku) explodeChunk(x int, y int, val int) {
+func (s *Sudoku) explodeChunk(x int, y int, val int8) {
 	x = x - (x % 3)
 	y = y - (y % 3)
 
@@ -215,7 +274,7 @@ func (s *Sudoku) explodeChunk(x int, y int, val int) {
 	}
 }
 
-func (s *Sudoku) explodeVertical(x int, val int) {
+func (s *Sudoku) explodeVertical(x int, val int8) {
 	for i := 0; i < 9; i++ {
 		if s.board[x][i].blocked[val] == false {
 			s.board[x][i].blocked[val] = true
@@ -223,7 +282,7 @@ func (s *Sudoku) explodeVertical(x int, val int) {
 	}
 }
 
-func (s *Sudoku) explodeHorizontal(y int, val int) {
+func (s *Sudoku) explodeHorizontal(y int, val int8) {
 	for i := 0; i < 9; i++ {
 		if s.board[i][y].blocked[val] == false {
 			s.board[i][y].blocked[val] = true
@@ -294,7 +353,7 @@ func readBoard(path string) [9][9]Cell {
 	for i, c := 0, 0; i < 9; i++ {
 		for j := 0; j < 9; j, c = j+1, c+1 {
 			Value, err = strconv.Atoi(list[c])
-			board[i][j] = Cell{noBlock, Value}
+			board[i][j] = Cell{noBlock, int8(Value), false}
 		}
 	}
 	return board

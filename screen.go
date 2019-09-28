@@ -31,7 +31,7 @@ func loadPicture(path string) (pixel.Picture, error) {
 
 func run() {
 	cfg := pixelgl.WindowConfig{
-		Title:  "Pixel Rocks!",
+		Title:  "Sindri's Sudoku Solver",
 		Bounds: pixel.R(0, 0, 410, 410),
 		VSync:  true,
 	}
@@ -58,12 +58,14 @@ func run() {
 	)
 	var board [9][9]solver.Cell
 
+	feeder := make(chan [9][9]solver.Cell)
+
 	//Initialize the board
 	Solver := new(solver.Sudoku)
-	Solver.Begin("presets/board1.txt", true)
+	Solver.Begin("presets/"+os.Args[1], nil)
 
 	//Solve the board
-	go Solver.Solve()
+	go Solver.Solve(feeder)
 
 	//Drawing the gridlines
 	var thickness float64
@@ -84,8 +86,11 @@ func run() {
 	}
 
 	for !win.Closed() {
-		if win.JustPressed(pixelgl.MouseButtonLeft) {
-			board = <-Solver.Feeder
+		if win.JustPressed(pixelgl.MouseButtonLeft) || win.Pressed(pixelgl.KeyRight) {
+			select {
+			case board = <-feeder:
+			default:
+			}
 		}
 
 		win.Clear(color.RGBA{215, 215, 215, 255})
@@ -98,6 +103,13 @@ func run() {
 				y = 25 + 45*j
 				digit := pixel.NewSprite(spritesheet, digitFrames[board[int(i)][int(j)].Value])
 				digit.Draw(batch, pixel.IM.Moved(pixel.V(x, y)))
+				if board[int(i)][int(j)].Unsure == true {
+					highlight := imdraw.New(nil)
+					highlight.Color = color.RGBA{230, 110, 110, 150}
+					highlight.Push(pixel.V(x, y))
+					highlight.Circle(20, 0)
+					highlight.Draw(win)
+				}
 			}
 		}
 		batch.Draw(win)
