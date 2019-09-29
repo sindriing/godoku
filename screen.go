@@ -61,11 +61,15 @@ func run() {
 	feeder := make(chan [9][9]solver.Cell)
 
 	//Initialize the board
-	Solver := new(solver.Sudoku)
-	Solver.Begin("presets/"+os.Args[1], nil)
 
-	//Solve the board
-	go Solver.Solve(feeder)
+	go func(path string, feeder chan [9][9]solver.Cell) {
+		Solver := new(solver.Sudoku)
+		Solver.Begin(path, feeder)
+
+		//Solve the board
+		Solver.Solve(feeder)
+
+	}("presets/"+os.Args[1], feeder)
 
 	//Drawing the gridlines
 	var thickness float64

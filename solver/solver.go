@@ -28,6 +28,8 @@ type Sudoku struct {
 func (s *Sudoku) Begin(path string, feeder chan<- [9][9]Cell) {
 	s.board = readBoard(path)
 	s.FirstSweep(feeder)
+	feeder <- s.board
+
 }
 
 // if the cell doesn't have a value and all values are blocked then something is wrong
@@ -68,14 +70,13 @@ func (s *Sudoku) checkCell(i int, j int) (change bool) {
 }
 
 //Solve attempts to solve the board, cannot make guesses
-func (s Sudoku) Solve(feeder chan<- [9][9]Cell) bool {
+func (s *Sudoku) Solve(feeder chan<- [9][9]Cell) bool {
 	for s.filled < 81 {
 		change := false
 		for i := 0; i < 9; i++ {
 			for j := 0; j < 9; j++ {
-				// fmt.Println(i, j, s.board[0][1].blocked[1])
 				if !sanity(s.board[i][j]) {
-					fmt.Println("Shit hit the fan!")
+					fmt.Println("Guess was incorrect: Backtracking")
 					return false
 				} else if s.isFree(i, j) {
 					if feeder != nil && s.checkCell(i, j) {
@@ -86,11 +87,8 @@ func (s Sudoku) Solve(feeder chan<- [9][9]Cell) bool {
 			}
 		}
 		if !change {
-			//Todo implementing guessing
-			fmt.Println("Making a guess")
+			fmt.Println("No obvious moves: Guessing")
 			s.guess(feeder)
-
-			// if s.Solve()
 		}
 	}
 	return true
@@ -98,7 +96,6 @@ func (s Sudoku) Solve(feeder chan<- [9][9]Cell) bool {
 
 func (s *Sudoku) guess(feeder chan<- [9][9]Cell) {
 	backup := makeBackup(*s)
-
 	//Attempt to make high probability guesses by prioritizing cells with few options
 	for standards := 2; standards < 9; standards++ {
 		for i := 0; i < 9; i++ {
@@ -110,7 +107,10 @@ func (s *Sudoku) guess(feeder chan<- [9][9]Cell) {
 							//if we can't we can at least rule out the guessed number
 							backup.explode(i, j, int8(nr+1), true)
 							if backup.Solve(feeder) {
-								s.explode(i, j, int8(nr+1), false)
+								s.board = backup.board
+								s.filled = 9 * 9
+								s.board[i][j].Unsure = false
+								feeder <- s.board
 							} else {
 								s.board[i][j].blocked[nr] = true
 								s.checkCell(i, j)
@@ -353,7 +353,7 @@ func readBoard(path string) [9][9]Cell {
 	for i, c := 0, 0; i < 9; i++ {
 		for j := 0; j < 9; j, c = j+1, c+1 {
 			Value, err = strconv.Atoi(list[c])
-			board[i][j] = Cell{noBlock, int8(Value), false}
+			board[j][8-i] = Cell{noBlock, int8(Value), false}
 		}
 	}
 	return board
