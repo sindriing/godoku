@@ -69,7 +69,7 @@ func run() {
 		//Solve the board
 		Solver.Solve(feeder)
 
-	}("presets/"+os.Args[1], feeder)
+	}(os.Args[1], feeder)
 
 	//Drawing the gridlines
 	var thickness float64

@@ -26,7 +26,12 @@ type Sudoku struct {
 // if the gui argument is true then a channel will be initialized which
 // feeds the gui with board states to display
 func (s *Sudoku) Begin(path string, feeder chan<- [9][9]Cell) {
-	s.board = readBoard(path)
+	l := strings.ToLower(path)
+	if l == "easy" || l == "medium" || l == "hard" || l == "expert" {
+		s.board = fetchBoard(l)
+	} else {
+		s.board = readBoard("presets/" + path)
+	}
 	s.FirstSweep(feeder)
 	feeder <- s.board
 
@@ -337,6 +342,27 @@ func (s Sudoku) printBlock() {
 	fmt.Println()
 }
 
+func fetchBoard(diff string) [9][9]Cell {
+	var board [9][9]Cell
+	var noBlock [9]bool
+	dat, err := GetLevelOnline(diff)
+	check(err)
+
+	var (
+		value int
+		x     int
+		y     int
+	)
+
+	for i, c := range dat {
+		x = i % 9
+		y = i / 9
+		value, _ = strconv.Atoi(string(c))
+		board[x][y] = Cell{noBlock, int8(value), false}
+	}
+	return board
+}
+
 func readBoard(path string) [9][9]Cell {
 	var board [9][9]Cell
 	var noBlock [9]bool
@@ -349,11 +375,11 @@ func readBoard(path string) [9][9]Cell {
 	}
 	list := strings.FieldsFunc(string(dat), f)
 
-	var Value int
+	var value int
 	for i, c := 0, 0; i < 9; i++ {
 		for j := 0; j < 9; j, c = j+1, c+1 {
-			Value, err = strconv.Atoi(list[c])
-			board[j][8-i] = Cell{noBlock, int8(Value), false}
+			value, err = strconv.Atoi(list[c])
+			board[j][8-i] = Cell{noBlock, int8(value), false}
 		}
 	}
 	return board
