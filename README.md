@@ -3,7 +3,7 @@ Sudoku solver made as an exercise to learn Go
 
 ## Examples:
 1. "**go run screen.go hard**"
-  -fetches a hard board from sudoku.com and starts the GUI
+  -fetches a hard board from sudoku.com and starts the GUI (can choose one of: easy/medium/hard/expert)
  2. "**go run screen.go myboard.txt**"
   -Fetches a board stored in presets/myboard.txt and starts the GUI
 
