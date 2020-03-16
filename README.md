@@ -1,12 +1,17 @@
 # godoku
-Sudoku solver made in an exercise to learn Go
+Sudoku solver made as an exercise to learn Go
 
-Insert new board: 
-see format of boards in the presets folder
+## Examples:
+1. "**go run screen.go hard**"
+  -fetches a hard board from sudoku.com and starts the GUI (can choose one of: easy/medium/hard/expert)
+ 2. "**go run screen.go myboard.txt**"
+  -Fetches a board stored in presets/myboard.txt and starts the GUI
 
-To use:
-"go run screen.go NameOfBoardInPresets"
-Left click to make one move
-Right arrow to speed through
 
-If a cell is highlighted red then it represents that the algotithm guessed that specific move and will have to verify it by completing or failing to complete the board
+## Using the GUI
+1. Left click to make one move
+2. Right arrow to speed through moves
+
+## Extra info
+A number highlighted red indicates that the algorihm had to make an educated guess(prioritising cells with few possible numbers). If the guess leads to an impossible board state the algorithm will backtrack and try a new number.
+
