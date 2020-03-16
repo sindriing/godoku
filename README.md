@@ -7,11 +7,16 @@ Sudoku solver made as an exercise to learn Go
  2. "**go run screen.go myboard.txt**"
   -Fetches a board stored in presets/myboard.txt and starts the GUI
 
+### Solving a *hard* board without a single guess
+![hard.gif](gifs/hard.gif)
+
+### Solving an *Expert* boards is a bit more involved requiring some guessing and backtracking
+![expert.gif](gifs/expert.gif)
 
 ## Using the GUI
 1. Left click to make one move
 2. Right arrow to speed through moves
 
 ## Extra info
-A number highlighted red indicates that the algorihm had to make an educated guess(prioritising cells with few possible numbers). If the guess leads to an impossible board state the algorithm will backtrack and try a new number.
+A number highlighted red indicates that the algorihm had to make an educated guess(prioritising guesses with higher probability of success). If the guess leads to an impossible board state the algorithm will backtrack and try a new number.
 
